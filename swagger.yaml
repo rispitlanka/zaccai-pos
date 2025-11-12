@@ -1,0 +1,2058 @@
+openapi: 3.0.3
+info:
+  title: Rispit POS API
+  description: |
+    RESTful API documentation for Rispit Point of Sale (POS) System.
+    
+    This API provides endpoints for managing products, sales, customers, staff, expenses, and reports.
+    
+    ## Authentication
+    All protected endpoints require a Bearer token in the Authorization header.
+    Obtain a token by logging in via the `/api/auth/login` endpoint.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@rispit.com
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+  - url: https://api.rispit.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and profile management
+  - name: Products
+    description: Product management operations
+  - name: Categories
+    description: Product category management
+  - name: Product Variations
+    description: Product variation and attribute management
+  - name: Customers
+    description: Customer management operations
+  - name: Sales
+    description: Sales transaction management
+  - name: Returns
+    description: Return and refund management
+  - name: Expenses
+    description: Expense tracking and management
+  - name: Expense Categories
+    description: Expense category management
+  - name: Reports
+    description: Analytics and reporting endpoints
+  - name: Settings
+    description: System settings management
+  - name: Staff
+    description: Staff member management
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        fullName:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [admin, cashier, manager]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+        cost:
+          type: number
+        stock:
+          type: number
+        minStock:
+          type: number
+        unit:
+          type: string
+        image:
+          type: string
+        isActive:
+          type: boolean
+        hasVariations:
+          type: boolean
+        variationCombinations:
+          type: array
+          items:
+            type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+        icon:
+          type: string
+        sortOrder:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    Customer:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            zipCode:
+              type: string
+            country:
+              type: string
+        loyaltyPoints:
+          type: number
+        totalPurchases:
+          type: number
+        lastPurchaseDate:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Sale:
+      type: object
+      properties:
+        _id:
+          type: string
+        invoiceNumber:
+          type: string
+        customer:
+          type: string
+        customerInfo:
+          type: object
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product:
+                type: string
+              productName:
+                type: string
+              quantity:
+                type: number
+              unitPrice:
+                type: number
+              discount:
+                type: number
+              totalPrice:
+                type: number
+        subtotal:
+          type: number
+        discount:
+          type: number
+        tax:
+          type: number
+        total:
+          type: number
+        payments:
+          type: array
+          items:
+            type: object
+        status:
+          type: string
+          enum: [completed, partial, refunded]
+        cashier:
+          type: string
+        cashierName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Return:
+      type: object
+      properties:
+        _id:
+          type: string
+        sale:
+          type: string
+        invoiceNumber:
+          type: string
+        items:
+          type: array
+        total:
+          type: number
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Expense:
+      type: object
+      properties:
+        _id:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        description:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [cash, card, bank_transfer, cheque]
+        date:
+          type: string
+          format: date
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ExpenseCategory:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ProductVariation:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [size, color, material, other]
+        values:
+          type: array
+          items:
+            type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    StaffMember:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        fullName:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [admin, cashier, manager]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Settings:
+      type: object
+      properties:
+        storeName:
+          type: string
+        storeAddress:
+          type: string
+        storePhone:
+          type: string
+        storeEmail:
+          type: string
+        currency:
+          type: string
+        taxRate:
+          type: number
+        logo:
+          type: string
+        commission:
+          type: object
+
+    PaginationResponse:
+      type: object
+      properties:
+        page:
+          type: number
+        limit:
+          type: number
+        total:
+          type: number
+        pages:
+          type: number
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+
+paths:
+  # Authentication Endpoints
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and receive JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Get current authenticated user's profile
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Authentication
+      summary: Update user profile
+      description: Update current authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+
+  /api/auth/change-password:
+    patch:
+      tags:
+        - Authentication
+      summary: Change password
+      description: Change current user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password changed successfully
+        '401':
+          description: Invalid current password
+
+  # Product Endpoints
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: Get products list
+      description: Retrieve a paginated list of products with optional filters
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by product name, SKU, or barcode
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category ID
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Products
+      summary: Create product
+      description: Create a new product
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                sku:
+                  type: string
+                barcode:
+                  type: string
+                category:
+                  type: string
+                price:
+                  type: number
+                cost:
+                  type: number
+                stock:
+                  type: number
+                minStock:
+                  type: number
+                unit:
+                  type: string
+                image:
+                  type: string
+                  format: binary
+                isActive:
+                  type: boolean
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    $ref: '#/components/schemas/Product'
+        '400':
+          description: Validation error
+
+  /api/products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Retrieve a single product by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+
+    put:
+      tags:
+        - Products
+      summary: Update product
+      description: Update an existing product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                sku:
+                  type: string
+                barcode:
+                  type: string
+                category:
+                  type: string
+                price:
+                  type: number
+                cost:
+                  type: number
+                stock:
+                  type: number
+                minStock:
+                  type: number
+                unit:
+                  type: string
+                image:
+                  type: string
+                  format: binary
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Product updated successfully
+        '404':
+          description: Product not found
+
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: Delete a product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product deleted successfully
+        '404':
+          description: Product not found
+
+  /api/products/categories:
+    get:
+      tags:
+        - Products
+      summary: Get product categories list
+      description: Get list of all categories used by products
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: string
+
+  /api/products/barcode/{barcode}:
+    get:
+      tags:
+        - Products
+      summary: Get product by barcode
+      description: Retrieve a product by its barcode
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+
+  # Category Endpoints
+  /api/categories:
+    get:
+      tags:
+        - Categories
+      summary: Get categories list
+      description: Retrieve a paginated list of categories
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Categories
+      summary: Create category
+      description: Create a new product category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+                  default: '#3B82F6'
+                icon:
+                  type: string
+                  default: 'Package'
+                sortOrder:
+                  type: number
+                  default: 0
+      responses:
+        '201':
+          description: Category created successfully
+        '400':
+          description: Validation error
+
+  /api/categories/all:
+    get:
+      tags:
+        - Categories
+      summary: Get all categories
+      description: Retrieve all categories without pagination
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  /api/categories/{id}:
+    put:
+      tags:
+        - Categories
+      summary: Update category
+      description: Update an existing category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+                icon:
+                  type: string
+                sortOrder:
+                  type: number
+      responses:
+        '200':
+          description: Category updated successfully
+        '404':
+          description: Category not found
+
+    delete:
+      tags:
+        - Categories
+      summary: Delete category
+      description: Delete a category by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category deleted successfully
+        '404':
+          description: Category not found
+
+  # Product Variation Endpoints
+  /api/product-variations:
+    get:
+      tags:
+        - Product Variations
+      summary: Get product variations list
+      description: Retrieve a paginated list of product variations
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Variations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductVariation'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Product Variations
+      summary: Create product variation
+      description: Create a new product variation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - type
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [size, color, material, other]
+      responses:
+        '201':
+          description: Variation created successfully
+
+  /api/product-variations/all:
+    get:
+      tags:
+        - Product Variations
+      summary: Get all product variations
+      description: Retrieve all product variations without pagination
+      responses:
+        '200':
+          description: Variations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductVariation'
+
+  /api/product-variations/{id}:
+    get:
+      tags:
+        - Product Variations
+      summary: Get product variation by ID
+      description: Retrieve a single product variation by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Variation retrieved successfully
+        '404':
+          description: Variation not found
+
+    put:
+      tags:
+        - Product Variations
+      summary: Update product variation
+      description: Update an existing product variation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+      responses:
+        '200':
+          description: Variation updated successfully
+
+    delete:
+      tags:
+        - Product Variations
+      summary: Delete product variation
+      description: Delete a product variation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Variation deleted successfully
+
+  /api/product-variations/{id}/values:
+    post:
+      tags:
+        - Product Variations
+      summary: Add variation value
+      description: Add a new value to a product variation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Value added successfully
+
+    get:
+      tags:
+        - Product Variations
+      summary: Get variation values
+      description: Get all values for a product variation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Values retrieved successfully
+
+  /api/product-variations/{id}/values/{valueId}:
+    put:
+      tags:
+        - Product Variations
+      summary: Update variation value
+      description: Update a value in a product variation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: valueId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Value updated successfully
+
+    delete:
+      tags:
+        - Product Variations
+      summary: Delete variation value
+      description: Delete a value from a product variation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: valueId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Value deleted successfully
+
+  # Customer Endpoints
+  /api/customers:
+    get:
+      tags:
+        - Customers
+      summary: Get customers list
+      description: Retrieve a paginated list of customers
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, phone, or email
+      responses:
+        '200':
+          description: Customers retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Customer'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Customers
+      summary: Create customer
+      description: Create a new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - phone
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: object
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Customer created successfully
+        '400':
+          description: Validation error
+
+  /api/customers/{id}:
+    get:
+      tags:
+        - Customers
+      summary: Get customer by ID
+      description: Retrieve a single customer by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer:
+                    $ref: '#/components/schemas/Customer'
+        '404':
+          description: Customer not found
+
+    put:
+      tags:
+        - Customers
+      summary: Update customer
+      description: Update an existing customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: object
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Customer updated successfully
+        '404':
+          description: Customer not found
+
+    delete:
+      tags:
+        - Customers
+      summary: Delete customer
+      description: Delete a customer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer deleted successfully
+        '404':
+          description: Customer not found
+
+  # Sales Endpoints
+  /api/sales:
+    get:
+      tags:
+        - Sales
+      summary: Get sales list
+      description: Retrieve a paginated list of sales transactions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by invoice number
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [completed, partial, refunded]
+      responses:
+        '200':
+          description: Sales retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sales:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Sales
+      summary: Create sale
+      description: Create a new sales transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+                - total
+                - payments
+              properties:
+                customer:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product:
+                        type: string
+                      quantity:
+                        type: number
+                      unitPrice:
+                        type: number
+                      discount:
+                        type: number
+                subtotal:
+                  type: number
+                discount:
+                  type: number
+                tax:
+                  type: number
+                total:
+                  type: number
+                payments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      method:
+                        type: string
+                        enum: [cash, card, bank_transfer]
+                      amount:
+                        type: number
+                loyaltyPointsUsed:
+                  type: number
+      responses:
+        '201':
+          description: Sale created successfully
+        '400':
+          description: Validation error
+
+  /api/sales/{id}:
+    get:
+      tags:
+        - Sales
+      summary: Get sale by ID
+      description: Retrieve a single sale by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sale retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sale:
+                    $ref: '#/components/schemas/Sale'
+        '404':
+          description: Sale not found
+
+  # Returns Endpoints
+  /api/returns:
+    get:
+      tags:
+        - Returns
+      summary: Get returns list
+      description: Retrieve a paginated list of returns
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Returns retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  returns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Return'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Returns
+      summary: Create return
+      description: Create a new return/refund transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sale
+                - items
+                - total
+              properties:
+                sale:
+                  type: string
+                invoiceNumber:
+                  type: string
+                items:
+                  type: array
+                total:
+                  type: number
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Return created successfully
+        '400':
+          description: Validation error
+
+  # Expense Endpoints
+  /api/expenses:
+    get:
+      tags:
+        - Expenses
+      summary: Get expenses list
+      description: Retrieve a paginated list of expenses
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Expenses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expenses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Expenses
+      summary: Create expense
+      description: Create a new expense record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - category
+                - amount
+                - date
+              properties:
+                category:
+                  type: string
+                amount:
+                  type: number
+                description:
+                  type: string
+                paymentMethod:
+                  type: string
+                  enum: [cash, card, bank_transfer, cheque]
+                date:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Expense created successfully
+        '400':
+          description: Validation error
+
+  /api/expenses/{id}:
+    get:
+      tags:
+        - Expenses
+      summary: Get expense by ID
+      description: Retrieve a single expense by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expense retrieved successfully
+        '404':
+          description: Expense not found
+
+    put:
+      tags:
+        - Expenses
+      summary: Update expense
+      description: Update an existing expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  type: string
+                amount:
+                  type: number
+                description:
+                  type: string
+                paymentMethod:
+                  type: string
+                date:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Expense updated successfully
+
+    delete:
+      tags:
+        - Expenses
+      summary: Delete expense
+      description: Delete an expense by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expense deleted successfully
+
+  /api/expenses/categories:
+    get:
+      tags:
+        - Expenses
+      summary: Get expense categories list
+      description: Get list of all categories used by expenses
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: string
+
+  # Expense Category Endpoints
+  /api/expense-categories:
+    get:
+      tags:
+        - Expense Categories
+      summary: Get expense categories list
+      description: Retrieve a paginated list of expense categories
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExpenseCategory'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+    post:
+      tags:
+        - Expense Categories
+      summary: Create expense category
+      description: Create a new expense category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '201':
+          description: Category created successfully
+
+  /api/expense-categories/all:
+    get:
+      tags:
+        - Expense Categories
+      summary: Get all expense categories
+      description: Retrieve all expense categories without pagination
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExpenseCategory'
+
+  /api/expense-categories/{id}:
+    put:
+      tags:
+        - Expense Categories
+      summary: Update expense category
+      description: Update an existing expense category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '200':
+          description: Category updated successfully
+
+    delete:
+      tags:
+        - Expense Categories
+      summary: Delete expense category
+      description: Delete an expense category by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category deleted successfully
+
+  # Reports Endpoints
+  /api/reports/dashboard:
+    get:
+      tags:
+        - Reports
+      summary: Get dashboard statistics
+      description: Get comprehensive dashboard statistics including sales, expenses, products, and customers
+      responses:
+        '200':
+          description: Dashboard stats retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats:
+                    type: object
+                    properties:
+                      today:
+                        type: object
+                      month:
+                        type: object
+                      products:
+                        type: object
+                      customers:
+                        type: object
+                      paymentMethods:
+                        type: array
+                  topProducts:
+                    type: array
+                  recentSales:
+                    type: array
+
+  /api/reports/sales:
+    get:
+      tags:
+        - Reports
+      summary: Get sales report
+      description: Get sales analytics and reports
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Sales report retrieved successfully
+
+  /api/reports/inventory:
+    get:
+      tags:
+        - Reports
+      summary: Get inventory report
+      description: Get inventory analytics and stock reports
+      responses:
+        '200':
+          description: Inventory report retrieved successfully
+
+  /api/reports/customers:
+    get:
+      tags:
+        - Reports
+      summary: Get customers report
+      description: Get customer analytics and reports
+      responses:
+        '200':
+          description: Customers report retrieved successfully
+
+  /api/reports/expenses:
+    get:
+      tags:
+        - Reports
+      summary: Get expenses report
+      description: Get expense analytics and reports
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Expenses report retrieved successfully
+
+  /api/reports/staffCommissions:
+    get:
+      tags:
+        - Reports
+      summary: Get staff commissions report
+      description: Get staff commission analytics and reports
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+          description: Month in YYYY-MM format
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+          description: Response format
+      responses:
+        '200':
+          description: Staff commissions report retrieved successfully
+
+  # Settings Endpoints
+  /api/settings:
+    get:
+      tags:
+        - Settings
+      summary: Get settings
+      description: Retrieve system settings
+      responses:
+        '200':
+          description: Settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    $ref: '#/components/schemas/Settings'
+
+    put:
+      tags:
+        - Settings
+      summary: Update settings
+      description: Update system settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeName:
+                  type: string
+                storeAddress:
+                  type: string
+                storePhone:
+                  type: string
+                storeEmail:
+                  type: string
+                currency:
+                  type: string
+                taxRate:
+                  type: number
+                commission:
+                  type: object
+      responses:
+        '200':
+          description: Settings updated successfully
+
+  /api/settings/logo:
+    post:
+      tags:
+        - Settings
+      summary: Upload store logo
+      description: Upload or update the store logo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Logo uploaded successfully
+
+  # Staff Endpoints
+  /api/staff:
+    get:
+      tags:
+        - Staff
+      summary: Get staff list
+      description: Retrieve a list of staff members
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Staff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  staff:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StaffMember'
+
+    post:
+      tags:
+        - Staff
+      summary: Create staff member
+      description: Create a new staff member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - fullName
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [admin, cashier, manager]
+      responses:
+        '201':
+          description: Staff member created successfully
+        '400':
+          description: Validation error
+
+  /api/staff/{id}:
+    put:
+      tags:
+        - Staff
+      summary: Update staff member
+      description: Update an existing staff member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+      responses:
+        '200':
+          description: Staff member updated successfully
+
+    delete:
+      tags:
+        - Staff
+      summary: Delete staff member
+      description: Delete a staff member by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Staff member deleted successfully
+
+  /api/staff/{id}/status:
+    patch:
+      tags:
+        - Staff
+      summary: Toggle staff status
+      description: Activate or deactivate a staff member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Staff status updated successfully
+

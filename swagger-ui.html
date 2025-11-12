@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rispit POS API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui.css" />
+  <script src="https://unpkg.com/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <style>
+    html {
+      box-sizing: border-box;
+      overflow: -moz-scrollbars-vertical;
+      overflow-y: scroll;
+    }
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+    body {
+      margin:0;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function() {
+      // Load the swagger.yaml file
+      fetch('./swagger.yaml')
+        .then(response => response.text())
+        .then(yaml => {
+          try {
+            // Convert YAML to JSON
+            const spec = jsyaml.load(yaml);
+            
+            const ui = SwaggerUIBundle({
+              spec: spec,
+              dom_id: '#swagger-ui',
+              deepLinking: true,
+              presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+              ],
+              plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+              ],
+              layout: "StandaloneLayout",
+              validatorUrl: null,
+              tryItOutEnabled: true
+            });
+          } catch (error) {
+            console.error('Error parsing YAML:', error);
+            document.getElementById('swagger-ui').innerHTML = 
+              '<div style="padding: 20px; text-align: center;">' +
+              '<h2>Error parsing API documentation</h2>' +
+              '<p>' + error.message + '</p>' +
+              '<p>Please check the swagger.yaml file for syntax errors.</p>' +
+              '<p>Alternatively, you can use <a href="https://editor.swagger.io/" target="_blank">Swagger Editor</a> to view the documentation.</p>' +
+              '</div>';
+          }
+        })
+        .catch(error => {
+          console.error('Error loading swagger.yaml:', error);
+          document.getElementById('swagger-ui').innerHTML = 
+            '<div style="padding: 20px; text-align: center;">' +
+            '<h2>Error loading API documentation</h2>' +
+            '<p>Please ensure swagger.yaml is in the same directory as this HTML file.</p>' +
+            '<p>Note: This HTML file needs to be served from a web server (not file://) to load the YAML file.</p>' +
+            '<p>You can:</p>' +
+            '<ul style="text-align: left; display: inline-block;">' +
+            '<li>Use <a href="https://editor.swagger.io/" target="_blank">Swagger Editor</a> (recommended)</li>' +
+            '<li>Run a local server: <code>python -m http.server 8000</code> or <code>npx serve</code></li>' +
+            '<li>Integrate Swagger UI into your backend server</li>' +
+            '</ul>' +
+            '</div>';
+        });
+    };
+  </script>
+</body>
+</html>
+
