@@ -115,23 +115,29 @@ const Products: React.FC = () => {
       <head>
         <title>Print Barcode</title>
         <style>
+          @page {
+            size: 50mm 25mm;
+            margin: 0;
+          }
           body {
+            width: 50mm;
+            height: 25mm;
+            margin: 0;
+            padding: 2mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 0;
-            padding: 20px;
             font-family: sans-serif;
           }
           img {
-            width: 100%;
-            max-width: 400px;
+            width: 45mm;
             height: auto;
           }
           .barcode-label {
-            margin-top: 12px;
-            font-size: 16px;
+            font-size: 8pt;
+            text-align: center;
+            margin-top: 1mm;
           }
         </style>
       </head>
@@ -144,11 +150,11 @@ const Products: React.FC = () => {
     doc.close();
 
     iframe.onload = () => {
-      iframe.contentWindow!.focus();
       iframe.contentWindow!.print();
       document.body.removeChild(iframe);
     };
   };
+
 
 
   const getStockStatus = (stock: number, minStock: number) => {
