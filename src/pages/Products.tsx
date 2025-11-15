@@ -113,7 +113,7 @@ const Products: React.FC = () => {
           </style>
         </head>
         <body>
-          <img src='${barcodeUrl}' alt='Barcode' style='width:400px;height:80px;' />
+          <img src='${barcodeUrl}' alt='Barcode' style='width:200px;height:80px;' />
           <div class='barcode-label'>${name} - LKR ${price.toFixed(2)}</div>
         </body>
       </html>
