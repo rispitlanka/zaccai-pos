@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { Link } from 'react-router-dom';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
   Package,
   AlertTriangle,
   Eye,
@@ -102,28 +102,54 @@ const Products: React.FC = () => {
   };
 
   const printBarcode = (barcodeUrl: string, name: string, price: number) => {
-    const originalContents = document.body.innerHTML;
-    const printContents = `
-      <html>
-        <head>
-          <title>Print Barcode</title>
-          <style>
-            body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .barcode-label { font-size: 16px; margin-top: 12px; }
-          </style>
-        </head>
-        <body>
-          <img src='${barcodeUrl}' alt='Barcode' style='width:200px;height:80px;' />
-          <div class='barcode-label'>${name} - LKR ${price.toFixed(2)}</div>
-        </body>
-      </html>
-    `;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    // Optionally, reload the page to restore event listeners and state
-    window.location.reload();
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "absolute";
+    iframe.style.left = "-9999px";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow!.document;
+
+    doc.open();
+    doc.write(`
+    <html>
+      <head>
+        <title>Print Barcode</title>
+        <style>
+          body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+            font-family: sans-serif;
+          }
+          img {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+          }
+          .barcode-label {
+            margin-top: 12px;
+            font-size: 16px;
+          }
+        </style>
+      </head>
+      <body>
+        <img src="${barcodeUrl}" alt="Barcode" />
+        <div class="barcode-label">${name} - LKR ${price.toFixed(2)}</div>
+      </body>
+    </html>
+  `);
+    doc.close();
+
+    iframe.onload = () => {
+      iframe.contentWindow!.focus();
+      iframe.contentWindow!.print();
+      document.body.removeChild(iframe);
+    };
   };
+
 
   const getStockStatus = (stock: number, minStock: number) => {
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-red-100 text-red-800' };
@@ -220,7 +246,7 @@ const Products: React.FC = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
+
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -231,7 +257,7 @@ const Products: React.FC = () => {
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
-          
+
           <button
             onClick={() => {
               setSearchTerm('');
@@ -362,50 +388,50 @@ const Products: React.FC = () => {
                         {/* Render remaining variation rows */}
                         {variations && variations.length > 1
                           ? variations.slice(1).map((variation, vIdx) => {
-                              const vStock = variation.stock ?? 0;
-                              const vMinStock = variation.minStock ?? product.minStock;
-                              const vStatus = getStockStatus(vStock, vMinStock);
-                              return (
-                                <tr key={variation._id} className={`transition-colors ${productIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}>
-                                  <td className="px-6 py-3 whitespace-nowrap align-middle">
-                                    <div className="flex flex-col text-xs">
-                                      <span className="font-semibold">{variation.combinationName}</span>
-                                      <span>Selling: LKR {variation.sellingPrice?.toFixed(2) ?? '-'}</span>
-                                      <span>Cost: LKR {variation.purchasePrice?.toFixed(2) ?? '-'}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-3 whitespace-nowrap align-middle">
-                                    <div className="flex items-center text-xs">
-                                      <span>{vStock} units</span>
-                                      {vStock <= vMinStock && (
-                                        <span className="flex items-center text-red-600 text-xs ml-2">
-                                          <AlertTriangle className="w-3 h-3 mr-1" />
-                                          Low Stock
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-3 whitespace-nowrap align-middle">
-                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${vStatus.color}`}>
-                                      {vStatus.label}
-                                    </span>
-                                  </td>
-                                  {/* Barcode column for this variation, centered */}
-                                  <td className="px-6 py-3 whitespace-nowrap text-center align-middle">
-                                    <button
-                                      onClick={() => {
-                                        setSelectedProduct({ ...product, selectedVariation: variation });
-                                        setShowBarcodeModal(true);
-                                      }}
-                                      className="text-blue-600 hover:text-blue-900 rounded-full p-2 border border-blue-100 hover:border-blue-300 transition"
-                                      title="View Barcode"
-                                    >
-                                      <Barcode className="w-5 h-5 mx-auto" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
+                            const vStock = variation.stock ?? 0;
+                            const vMinStock = variation.minStock ?? product.minStock;
+                            const vStatus = getStockStatus(vStock, vMinStock);
+                            return (
+                              <tr key={variation._id} className={`transition-colors ${productIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}>
+                                <td className="px-6 py-3 whitespace-nowrap align-middle">
+                                  <div className="flex flex-col text-xs">
+                                    <span className="font-semibold">{variation.combinationName}</span>
+                                    <span>Selling: LKR {variation.sellingPrice?.toFixed(2) ?? '-'}</span>
+                                    <span>Cost: LKR {variation.purchasePrice?.toFixed(2) ?? '-'}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap align-middle">
+                                  <div className="flex items-center text-xs">
+                                    <span>{vStock} units</span>
+                                    {vStock <= vMinStock && (
+                                      <span className="flex items-center text-red-600 text-xs ml-2">
+                                        <AlertTriangle className="w-3 h-3 mr-1" />
+                                        Low Stock
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap align-middle">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${vStatus.color}`}>
+                                    {vStatus.label}
+                                  </span>
+                                </td>
+                                {/* Barcode column for this variation, centered */}
+                                <td className="px-6 py-3 whitespace-nowrap text-center align-middle">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedProduct({ ...product, selectedVariation: variation });
+                                      setShowBarcodeModal(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900 rounded-full p-2 border border-blue-100 hover:border-blue-300 transition"
+                                    title="View Barcode"
+                                  >
+                                    <Barcode className="w-5 h-5 mx-auto" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
                           : null}
                       </React.Fragment>
                     );
