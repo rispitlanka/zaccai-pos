@@ -102,60 +102,28 @@ const Products: React.FC = () => {
   };
 
   const printBarcode = (barcodeUrl: string, name: string, price: number) => {
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "absolute";
-    iframe.style.left = "-9999px";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentDocument || iframe.contentWindow!.document;
-
-    doc.open();
-    doc.write(`
-    <html>
-      <head>
-        <title>Print Barcode</title>
-        <style>
-          @page {
-            size: 50mm 25mm;
-            margin: 0;
-          }
-          body {
-            width: 50mm;
-            height: 25mm;
-            margin: 0;
-            padding: 2mm;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: sans-serif;
-          }
-          img {
-            width: 45mm;
-            height: auto;
-          }
-          .barcode-label {
-            font-size: 8pt;
-            text-align: center;
-            margin-top: 1mm;
-          }
-        </style>
-      </head>
-      <body>
-        <img src="${barcodeUrl}" alt="Barcode" />
-        <div class="barcode-label">${name} - LKR ${price.toFixed(2)}</div>
-      </body>
-    </html>
-  `);
-    doc.close();
-
-    iframe.onload = () => {
-      iframe.contentWindow!.print();
-      document.body.removeChild(iframe);
-    };
+    const originalContents = document.body.innerHTML;
+    const printContents = `
+      <html>
+        <head>
+          <title>Print Barcode</title>
+          <style>
+            body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .barcode-label { font-size: 16px; margin-top: 12px; }
+          </style>
+        </head>
+        <body>
+          <img src='${barcodeUrl}' alt='Barcode' style='width:400px;height:80px;' />
+          <div class='barcode-label'>${name} - LKR ${price.toFixed(2)}</div>
+        </body>
+      </html>
+    `;
+    document.body.innerHTML = printContents;
+    window.print();
+    document.body.innerHTML = originalContents;
+    // Optionally, reload the page to restore event listeners and state
+    window.location.reload();
   };
-
-
 
   const getStockStatus = (stock: number, minStock: number) => {
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-red-100 text-red-800' };
