@@ -102,28 +102,66 @@ const Products: React.FC = () => {
   };
 
   const printBarcode = (barcodeUrl: string, name: string, price: number) => {
-    const originalContents = document.body.innerHTML;
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      console.error('Unable to open print window (popup blocked).');
+      return;
+    }
+
     const printContents = `
-      <html>
-        <head>
-          <title>Print Barcode</title>
-          <style>
-            body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .barcode-label { font-size: 16px; margin-top: 12px; }
-          </style>
-        </head>
-        <body>
-          <img src='${barcodeUrl}' alt='Barcode' style='width:200px;height:80px;' />
-          <div class='barcode-label'>${name} - LKR ${price.toFixed(2)}</div>
-        </body>
-      </html>
-    `;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    // Optionally, reload the page to restore event listeners and state
-    window.location.reload();
+    <html>
+      <head>
+        <title>Print Barcode</title>
+        <style>
+          @page { size: auto; margin: 0; } /* let printer margins handle it */
+          html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+          }
+          .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4mm;
+          }
+          .barcode-label { font-size: 10px; margin-top: 8px; text-align: center; }
+          img { display: block; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <img src="${barcodeUrl}" alt="Barcode" style="width:300px;height:80px;" />
+          <div class="barcode-label">${name} - LKR ${price.toFixed(2)}</div>
+        </div>
+      </body>
+    </html>
+  `;
+
+    // write contents to popup, print, then close popup
+    printWindow.document.open();
+    printWindow.document.write(printContents);
+    printWindow.document.close();
+
+    // ensure content is loaded before printing
+    printWindow.focus();
+    printWindow.onload = () => {
+      try {
+        printWindow.print();
+      } catch (err) {
+        console.error('Print failed', err);
+      }
+      // close popup after a short delay so print dialog appears
+      setTimeout(() => {
+        printWindow.close();
+      }, 500);
+    };
   };
+
 
   const getStockStatus = (stock: number, minStock: number) => {
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-red-100 text-red-800' };
