@@ -168,22 +168,6 @@ const POS: React.FC = () => {
     );
   };
 
-  // Auto-fill payment amount with total when payment modal opens
-  useEffect(() => {
-    if (showPaymentModal) {
-      const total = calculateFinalTotal();
-      setPayments((prev) => {
-        // Only update if the first payment is 0 or if there is only one payment method
-        if (prev.length === 1 && prev[0].amount !== total) {
-          // If total is negative (refund), set payment to 0
-          const paymentAmount = total < 0 ? 0 : total;
-          return [{ ...prev[0], amount: paymentAmount }];
-        }
-        return prev;
-      });
-    }
-  }, [showPaymentModal]);
-
   const loadProducts = async () => {
     setProductsLoading(true);
     try {
