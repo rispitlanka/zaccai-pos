@@ -59,7 +59,7 @@ interface Customer {
   email: string;
   loyaltyPoints: number;
 }
-
+// TODO: Add a modal to add a new product
 const POS: React.FC = () => {
   const {
     items,
