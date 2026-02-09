@@ -62,6 +62,14 @@ interface ProductFormData {
     selectedValues: string[];
   }>;
   variationCombinations: VariationCombination[];
+  // Product attributes
+  material: string;
+  fabricComposition: string;
+  style: string;
+  neckline: string;
+  fitType: string;
+  printType: string;
+  careInstruction: string;
 }
 
 const ProductForm: React.FC = () => {
@@ -73,6 +81,8 @@ const ProductForm: React.FC = () => {
   const [availableVariations, setAvailableVariations] = useState<ProductVariation[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [sizeChartImage, setSizeChartImage] = useState<File | null>(null);
+  const [sizeChartImagePreview, setSizeChartImagePreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   
   const [formData, setFormData] = useState<ProductFormData>({
@@ -89,7 +99,14 @@ const ProductForm: React.FC = () => {
     taxRate: 0,
     hasVariations: false,
     variations: [],
-    variationCombinations: []
+    variationCombinations: [],
+    material: '',
+    fabricComposition: '',
+    style: '',
+    neckline: '',
+    fitType: '',
+    printType: '',
+    careInstruction: ''
   });
 
   useEffect(() => {
@@ -160,8 +177,19 @@ const ProductForm: React.FC = () => {
         taxRate: product.taxRate,
         hasVariations: !!product.hasVariations,
         variations: mappedVariations,
-        variationCombinations: mappedCombinations
+        variationCombinations: mappedCombinations,
+        material: product.material || '',
+        fabricComposition: product.fabricComposition || '',
+        style: product.style || '',
+        neckline: product.neckline || '',
+        fitType: product.fitType || '',
+        printType: product.printType || '',
+        careInstruction: product.careInstruction || ''
       });
+      const sizeChartUrl = product.sizeChartImage || product.sizeChartImageUrl;
+      if (sizeChartUrl) {
+        setSizeChartImagePreview(sizeChartUrl);
+      }
     } catch (err) {
       error('Failed to load product');
       navigate('/products');
@@ -293,12 +321,28 @@ const ProductForm: React.FC = () => {
           isActive: true,
           hasVariations: formData.hasVariations,
           variations: backendVariations,
-          variationCombinations: combos
+          variationCombinations: combos,
+          material: formData.material || '',
+          fabricComposition: formData.fabricComposition || '',
+          style: formData.style || '',
+          neckline: formData.neckline || '',
+          fitType: formData.fitType || '',
+          printType: formData.printType || '',
+          careInstruction: formData.careInstruction || ''
         };
 
-        await api.put(`/api/products/${id}`, payload, {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        if (sizeChartImage && sizeChartImage instanceof File) {
+          const updateFormData = new FormData();
+          Object.entries(payload).forEach(([key, value]) => {
+            updateFormData.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+          });
+          updateFormData.append('sizeChartImage', sizeChartImage);
+          await api.put(`/api/products/${id}`, updateFormData);
+        } else {
+          await api.put(`/api/products/${id}`, payload, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
         success('Product updated successfully');
       } else {
         // Use FormData for POST (if you need to upload images)
@@ -316,6 +360,13 @@ const ProductForm: React.FC = () => {
         submitData.append('unit', formData.unit);
         submitData.append('isActive', 'true');
         submitData.append('hasVariations', String(formData.hasVariations));
+        submitData.append('material', formData.material || '');
+        submitData.append('fabricComposition', formData.fabricComposition || '');
+        submitData.append('style', formData.style || '');
+        submitData.append('neckline', formData.neckline || '');
+        submitData.append('fitType', formData.fitType || '');
+        submitData.append('printType', formData.printType || '');
+        submitData.append('careInstruction', formData.careInstruction || '');
         // Map variations to backend format
         const backendVariations = formData.variations.map(v => {
           const available = availableVariations.find(av => av._id === v.variationId);
@@ -357,6 +408,10 @@ const ProductForm: React.FC = () => {
         // Attach main product image
         if (image && image instanceof File) {
           submitData.append('image', image);
+        }
+        // Attach size chart image
+        if (sizeChartImage && sizeChartImage instanceof File) {
+          submitData.append('sizeChartImage', sizeChartImage);
         }
         await api.post('/api/products', submitData, {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -485,6 +540,26 @@ const ProductForm: React.FC = () => {
   const handleRemoveImage = () => {
     setImage(null);
     setImagePreview(null);
+  };
+
+  const handleSizeChartImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      error('Only image files are allowed');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      error('Size chart image must be less than 2MB');
+      return;
+    }
+    setSizeChartImage(file);
+    setSizeChartImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveSizeChartImage = () => {
+    setSizeChartImage(null);
+    setSizeChartImagePreview(null);
   };
 
   // Drag and drop handlers
@@ -656,6 +731,90 @@ const ProductForm: React.FC = () => {
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter product description"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Product Attributes */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Product Attributes</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Material</label>
+              <input
+                type="text"
+                name="material"
+                value={formData.material}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Cotton, Polyester"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fabric Composition</label>
+              <input
+                type="text"
+                name="fabricComposition"
+                value={formData.fabricComposition}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 100% Cotton"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Style</label>
+              <input
+                type="text"
+                name="style"
+                value={formData.style}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Casual, Formal"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Neckline</label>
+              <input
+                type="text"
+                name="neckline"
+                value={formData.neckline}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Round, V-neck"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fit Type</label>
+              <input
+                type="text"
+                name="fitType"
+                value={formData.fitType}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Regular, Slim, Relaxed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Print Type</label>
+              <input
+                type="text"
+                name="printType"
+                value={formData.printType}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Solid, Printed, Striped"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Care Instruction</label>
+              <input
+                type="text"
+                name="careInstruction"
+                value={formData.careInstruction}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Machine wash cold, Do not bleach"
               />
             </div>
           </div>
@@ -1043,6 +1202,42 @@ const ProductForm: React.FC = () => {
                   onClick={e => { e.stopPropagation(); handleRemoveImage(); }}
                   className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 text-red-600 hover:text-white hover:bg-red-600 transition-colors"
                   title="Remove image"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Size Chart Image Upload */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Product Size Chart Image <span className="text-xs text-gray-500">(optional, max 2MB)</span></label>
+          <div
+            className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 rounded-xl p-6 transition-colors duration-200 cursor-pointer"
+            onClick={() => document.getElementById('size-chart-image-input')?.click()}
+            style={{ minHeight: '120px' }}
+          >
+            <input
+              id="size-chart-image-input"
+              type="file"
+              accept="image/*"
+              onChange={handleSizeChartImageChange}
+              className="hidden"
+            />
+            {!sizeChartImagePreview ? (
+              <>
+                <Plus className="w-8 h-8 text-blue-400 mb-2" />
+                <span className="text-gray-600 font-medium">Click to upload size chart image</span>
+              </>
+            ) : (
+              <div className="relative max-w-xs">
+                <img src={sizeChartImagePreview} alt="Size chart" className="max-h-48 object-contain rounded-lg border" />
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); handleRemoveSizeChartImage(); }}
+                  className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 text-red-600 hover:text-white hover:bg-red-600 transition-colors"
+                  title="Remove size chart image"
                 >
                   <X className="w-4 h-4" />
                 </button>
