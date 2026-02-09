@@ -81,6 +81,8 @@ const ProductForm: React.FC = () => {
   const [availableVariations, setAvailableVariations] = useState<ProductVariation[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingMainImage, setExistingMainImage] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<Array<{ file: File | null; preview: string | null; existingUrl?: string }>>([]);
   const [sizeChartImage, setSizeChartImage] = useState<File | null>(null);
   const [sizeChartImagePreview, setSizeChartImagePreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -186,6 +188,19 @@ const ProductForm: React.FC = () => {
         printType: product.printType || '',
         careInstruction: product.careInstruction || ''
       });
+      // Set main product image preview when editing
+      if (product.image) {
+        setExistingMainImage(product.image);
+        setImagePreview(product.image);
+      }
+      // Load gallery images
+      if (product.galleryImages && Array.isArray(product.galleryImages) && product.galleryImages.length > 0) {
+        setGalleryImages(product.galleryImages.map((url: string) => ({
+          file: null,
+          preview: null,
+          existingUrl: url
+        })));
+      }
       const sizeChartUrl = product.sizeChartImage || product.sizeChartImageUrl;
       if (sizeChartUrl) {
         setSizeChartImagePreview(sizeChartUrl);
@@ -307,6 +322,14 @@ const ProductForm: React.FC = () => {
           };
         });
 
+        // Collect all gallery image URLs (existing + new files will be uploaded)
+        // For update: keep existing URLs, new files will be uploaded separately
+        const existingGalleryUrls = galleryImages
+          .filter(img => img.existingUrl && !img.file)
+          .map(img => img.existingUrl!);
+        
+        const hasNewFiles = image || galleryImages.some(img => img.file) || sizeChartImage;
+        
         const payload = {
           name: formData.name,
           sku: formData.sku,
@@ -329,16 +352,36 @@ const ProductForm: React.FC = () => {
           neckline: formData.neckline || '',
           fitType: formData.fitType || '',
           printType: formData.printType || '',
-          careInstruction: formData.careInstruction || ''
+          careInstruction: formData.careInstruction || '',
+          galleryImages: existingGalleryUrls // Include existing URLs (new files will be added via FormData)
         };
 
-        if (sizeChartImage && sizeChartImage instanceof File) {
+        if (hasNewFiles) {
           const updateFormData = new FormData();
           Object.entries(payload).forEach(([key, value]) => {
+            if (key === 'galleryImages') {
+              // galleryImages will be handled via files + existing URLs
+              return;
+            }
             updateFormData.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
           });
-          updateFormData.append('sizeChartImage', sizeChartImage);
-          await api.put(`/api/products/${id}`, updateFormData);
+          // Append existing gallery URLs as JSON array
+          updateFormData.append('galleryImages', JSON.stringify(existingGalleryUrls));
+          // Append new gallery image files
+          galleryImages.forEach((img, index) => {
+            if (img.file) {
+              updateFormData.append(`galleryImages[${index}]`, img.file);
+            }
+          });
+          if (image && image instanceof File) {
+            updateFormData.append('image', image);
+          }
+          if (sizeChartImage && sizeChartImage instanceof File) {
+            updateFormData.append('sizeChartImage', sizeChartImage);
+          }
+          await api.put(`/api/products/${id}`, updateFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
         } else {
           await api.put(`/api/products/${id}`, payload, {
             headers: { 'Content-Type': 'application/json' }
@@ -410,6 +453,12 @@ const ProductForm: React.FC = () => {
         if (image && image instanceof File) {
           submitData.append('image', image);
         }
+        // Attach gallery images
+        galleryImages.forEach((img, index) => {
+          if (img.file) {
+            submitData.append(`galleryImages[${index}]`, img.file);
+          }
+        });
         // Attach size chart image
         if (sizeChartImage && sizeChartImage instanceof File) {
           submitData.append('sizeChartImage', sizeChartImage);
@@ -541,6 +590,48 @@ const ProductForm: React.FC = () => {
   const handleRemoveImage = () => {
     setImage(null);
     setImagePreview(null);
+    setExistingMainImage(null);
+  };
+
+  const handleGalleryImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    const currentCount = galleryImages.length;
+    const remainingSlots = 8 - currentCount;
+    if (remainingSlots <= 0) {
+      error('Maximum 8 gallery images allowed');
+      return;
+    }
+    
+    const filesToAdd = files.slice(0, remainingSlots);
+    filesToAdd.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        error('Only image files are allowed');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        error('Each image must be less than 2MB');
+        return;
+      }
+      setGalleryImages(prev => [...prev, {
+        file,
+        preview: URL.createObjectURL(file),
+        existingUrl: undefined
+      }]);
+    });
+    e.target.value = ''; // Reset input
+  };
+
+  const handleGalleryImageRemove = (index: number) => {
+    setGalleryImages(prev => {
+      const newImages = [...prev];
+      if (newImages[index].preview && newImages[index].file) {
+        URL.revokeObjectURL(newImages[index].preview!);
+      }
+      newImages.splice(index, 1);
+      return newImages;
+    });
   };
 
   const handleSizeChartImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1171,42 +1262,103 @@ const ProductForm: React.FC = () => {
           </div>
         )}
 
-        {/* Image Upload */}
+        {/* Product Images Upload */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Product Image <span className="text-xs text-gray-500">(max 1, 2MB)</span></label>
-          <div
-            className={`relative flex flex-col items-center justify-center border-2 border-dashed ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'} rounded-xl p-6 transition-colors duration-200 cursor-pointer`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById('product-image-input')?.click()}
-            style={{ minHeight: '120px' }}
-          >
-            <input
-              id="product-image-input"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              disabled={!!image}
-              className="hidden"
-            />
-            {!imagePreview ? (
-              <>
-                <Plus className="w-8 h-8 text-blue-400 mb-2" />
-                <span className="text-gray-600 font-medium">Click or drag an image here to upload</span>
-              </>
-            ) : (
-              <div className="relative w-32 h-32">
-                <img src={imagePreview} alt="Preview" className="object-cover w-full h-full rounded-lg border" />
-                <button
-                  type="button"
-                  onClick={e => { e.stopPropagation(); handleRemoveImage(); }}
-                  className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 text-red-600 hover:text-white hover:bg-red-600 transition-colors"
-                  title="Remove image"
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Product Images</h2>
+          
+          {/* Main Image */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Main Image <span className="text-xs text-gray-500">(required, 2MB max)</span>
+            </label>
+            <div
+              className={`relative flex flex-col items-center justify-center border-2 border-dashed ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'} rounded-xl p-6 transition-colors duration-200 cursor-pointer hover:border-blue-400`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('product-image-input')?.click()}
+              style={{ minHeight: '120px' }}
+            >
+              <input
+                id="product-image-input"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              {!imagePreview ? (
+                <>
+                  <Plus className="w-8 h-8 text-blue-400 mb-2" />
+                  <span className="text-gray-600 font-medium">Click or drag main image here</span>
+                </>
+              ) : (
+                <div className="relative w-32 h-32">
+                  <img src={imagePreview} alt="Main Preview" className="object-cover w-full h-full rounded-lg border" />
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); handleRemoveImage(); }}
+                    className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 text-red-600 hover:text-white hover:bg-red-600 transition-colors"
+                    title="Remove main image"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Gallery Images */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gallery Images <span className="text-xs text-gray-500">(optional, up to 8, 2MB each)</span>
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Existing gallery images */}
+              {galleryImages.map((img, index) => (
+                <div key={index} className="relative aspect-square border-2 border-gray-200 rounded-lg overflow-hidden group">
+                  <img
+                    src={img.preview || img.existingUrl || ''}
+                    alt={`Gallery ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleGalleryImageRemove(index)}
+                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove image"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  {index === 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-1">
+                      Gallery {index + 1}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Add more gallery images button */}
+              {galleryImages.length < 8 && (
+                <div
+                  className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                  onClick={() => document.getElementById('gallery-images-input')?.click()}
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                  <input
+                    id="gallery-images-input"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleGalleryImageAdd}
+                    className="hidden"
+                  />
+                  <Plus className="w-6 h-6 text-gray-400 mb-1" />
+                  <span className="text-xs text-gray-600 text-center px-2">Add Gallery Image</span>
+                  <span className="text-xs text-gray-400 mt-1">{8 - galleryImages.length} remaining</span>
+                </div>
+              )}
+            </div>
+            {galleryImages.length === 0 && (
+              <p className="text-sm text-gray-500 mt-2">No gallery images added yet. Click above to add up to 8 images.</p>
             )}
           </div>
         </div>
