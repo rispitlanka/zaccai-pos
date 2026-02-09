@@ -186,6 +186,10 @@ const ProductForm: React.FC = () => {
         printType: product.printType || '',
         careInstruction: product.careInstruction || ''
       });
+      // Set main product image preview when editing
+      if (product.image) {
+        setImagePreview(product.image);
+      }
       const sizeChartUrl = product.sizeChartImage || product.sizeChartImageUrl;
       if (sizeChartUrl) {
         setSizeChartImagePreview(sizeChartUrl);
