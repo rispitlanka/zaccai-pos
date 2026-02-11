@@ -112,22 +112,22 @@ const ProductForm: React.FC = () => {
   });
 
   useEffect(() => {
-    loadCategories();
-    loadVariations();
-    if (id) {
-      loadProduct();
-    }
+    const init = async () => {
+      await loadCategories();
+      await loadVariations(); // Load before product so edit page has variations for mapping
+      if (id) {
+        await loadProduct();
+      }
+    };
+    init();
   }, [id]);
 
+  // Regenerate combination matrix when variations or selected values change (e.g. Color + Size → Red S, Red M, …)
   useEffect(() => {
-    if (
-      formData.hasVariations &&
-      formData.variations.length > 0 &&
-      formData.variationCombinations.length === 0
-    ) {
+    if (formData.hasVariations && formData.variations.length > 0) {
       generateVariationCombinations();
     }
-  }, [formData.variations, formData.hasVariations]);
+  }, [formData.hasVariations, formData.variations]);
 
   const loadCategories = async () => {
     try {
@@ -152,18 +152,35 @@ const ProductForm: React.FC = () => {
       const response = await api.get(`/api/products/${id}`);
       const product = response.data.product;
 
-      // Map variations to expected format
+      // Map variations to expected format: selectedValues as array of valueIds
       const mappedVariations = (product.variations || []).map((v: any) => ({
         variationId: v.variationId,
         variationName: v.variationName,
-        selectedValues: (v.selectedValues || []).map((val: any) => val.valueId)
+        selectedValues: (v.selectedValues || []).map((val: any) => val.valueId || val._id)
       }));
 
-      // Map variationCombinations to have 'id' field
-      const mappedCombinations = (product.variationCombinations || []).map((vc: any) => ({
-        ...vc,
-        id: vc._id || vc.id,
-      }));
+      // Map variationCombinations: API has variations[{ variationName, selectedValue }], form needs selectedValues[{ variationId, variationName, valueId, value }]
+      // Use id = valueIds.join('-') so regenerate preserves prices/stock/SKU
+      const mappedCombinations = (product.variationCombinations || []).map((vc: any) => {
+        const selectedValues = (vc.variations || []).map((v: any) => {
+          const pv = (product.variations || []).find((pv: any) => pv.variationName === v.variationName);
+          const sv = (pv?.selectedValues || []).find((sv: any) => sv.value === v.selectedValue);
+          return {
+            variationId: pv?.variationId,
+            variationName: v.variationName,
+            valueId: sv?.valueId || sv?._id,
+            value: v.selectedValue
+          };
+        }).filter((s: any) => s.variationId && s.valueId);
+        const comboId = selectedValues.map((s: any) => s.valueId).join('-');
+        return {
+          ...vc,
+          id: comboId,
+          selectedValues,
+          name: vc.combinationName,
+          combinationName: vc.combinationName
+        };
+      });
 
       setFormData({
         name: product.name,
@@ -217,45 +234,54 @@ const ProductForm: React.FC = () => {
       return;
     }
 
-    const combinations: VariationCombination[] = [];
-    
-    // For each selected variation, use all its active values
-    const allVariationValues = formData.variations.map(variation => {
+    // For each variation, use only the VALUES THE USER SELECTED (e.g. Red for Color; S, M, L, XL, XXL for Size)
+    const selectedValuesPerVariation = formData.variations.map(variation => {
       const availableVariation = availableVariations.find(v => v._id === variation.variationId);
       if (!availableVariation) return [];
-      return availableVariation.values.filter(v => v.isActive).map(value => ({
-        variationId: variation.variationId,
-        variationName: variation.variationName,
-        valueId: value._id,
-        value: value.value
-      }));
+      // Only include values that are in this variation's selectedValues
+      return variation.selectedValues
+        .map(valueId => availableVariation.values.find(v => v._id === valueId))
+        .filter(Boolean)
+        .filter(v => v!.isActive)
+        .map(value => ({
+          variationId: variation.variationId,
+          variationName: variation.variationName,
+          valueId: value!._id,
+          value: value!.value
+        }));
     });
 
-    // Helper to generate cartesian product
-    function cartesianProduct(arr: any[][]): any[][] {
-      return arr.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]]);
+    // Require at least one value selected per variation to generate combinations
+    const hasEmptySelection = selectedValuesPerVariation.some(arr => arr.length === 0);
+    if (hasEmptySelection) {
+      setFormData(prev => ({ ...prev, variationCombinations: [] }));
+      return;
     }
 
-    const combos = cartesianProduct(allVariationValues);
+    // Cartesian product: e.g. [Red] × [S, M, L, XL, XXL] → Red S, Red M, Red L, Red XL, Red XXL
+    function cartesianProduct<T>(arr: T[][]): T[][] {
+      return arr.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]] as T[][]);
+    }
 
-    combos.forEach(currentCombo => {
+    const combos = cartesianProduct(selectedValuesPerVariation);
+
+    const combinations: VariationCombination[] = combos.map(currentCombo => {
       const comboName = currentCombo.map(c => c.value).join(' / ');
       const comboId = currentCombo.map(c => c.valueId).join('-');
       const comboSku = (Math.floor(1000 + Math.random() * 9000)).toString();
-      // Check if this combination already exists
       const existingCombo = formData.variationCombinations.find(vc => vc.id === comboId);
-      combinations.push({
+      return {
         id: comboId,
         name: comboName,
         combinationName: comboName,
         selectedValues: [...currentCombo],
-        purchasePrice: existingCombo?.purchasePrice || 0,
-        sellingPrice: existingCombo?.sellingPrice || 0,
-        stock: existingCombo?.stock || 0,
-        sku: existingCombo?.sku || comboSku,
+        purchasePrice: existingCombo?.purchasePrice ?? 0,
+        sellingPrice: existingCombo?.sellingPrice ?? 0,
+        stock: existingCombo?.stock ?? 0,
+        sku: existingCombo?.sku ?? comboSku,
         image: existingCombo?.image,
         minStock: existingCombo?.minStock ?? 5,
-      });
+      };
     });
 
     setFormData(prev => ({
@@ -308,12 +334,13 @@ const ProductForm: React.FC = () => {
           };
         });
 
-        // Prepare variationCombinations for JSON (remove image field for JSON)
+        // Prepare variationCombinations for JSON: backend expects variations: [{ variationName, selectedValue }]
         const combos = formData.variationCombinations.map(combo => {
           const { image, ...comboData } = combo;
-          // Fill missing/invalid fields with 0 or default values
+          const variations = (combo.selectedValues || []).map(s => ({ variationName: s.variationName, selectedValue: s.value }));
           return {
             ...comboData,
+            variations,
             purchasePrice: isNaN(comboData.purchasePrice) ? 0 : comboData.purchasePrice,
             sellingPrice: isNaN(comboData.sellingPrice) ? 0 : comboData.sellingPrice,
             stock: isNaN(comboData.stock) ? 0 : comboData.stock,
@@ -431,16 +458,16 @@ const ProductForm: React.FC = () => {
           };
         });
         submitData.append('variations', JSON.stringify(backendVariations));
-        // Prepare variationCombinations for JSON and images
+        // Prepare variationCombinations for JSON and images; backend expects variations: [{ variationName, selectedValue }]
         const combos = formData.variationCombinations.map((combo, i) => {
           if (combo.image && combo.image instanceof File) {
             submitData.append(`variationCombinations[${i}][image]`, combo.image);
           }
-          // Exclude image from JSON
           const { image, ...comboData } = combo;
-          // Fill missing/invalid fields with 0 or default values
+          const variations = (combo.selectedValues || []).map(s => ({ variationName: s.variationName, selectedValue: s.value }));
           return {
             ...comboData,
+            variations,
             purchasePrice: isNaN(comboData.purchasePrice) ? 0 : comboData.purchasePrice,
             sellingPrice: isNaN(comboData.sellingPrice) ? 0 : comboData.sellingPrice,
             stock: isNaN(comboData.stock) ? 0 : comboData.stock,
@@ -1054,6 +1081,10 @@ const ProductForm: React.FC = () => {
                   No variations selected. Choose from the dropdown above to add variations.
                 </p>
               ) : (
+                <>
+                <p className="text-sm text-gray-600 mb-3">
+                  Select at least one option for each variation. Combinations will be generated automatically (e.g. Red + S, M, L → Red S, Red M, Red L, …).
+                </p>
                 <div className="space-y-4">
                   {formData.variations.map((productVariation) => {
                     const variation = availableVariations.find(v => v._id === productVariation.variationId);
@@ -1104,6 +1135,7 @@ const ProductForm: React.FC = () => {
                     );
                   })}
                 </div>
+                </>
               )}
             </div>
 
