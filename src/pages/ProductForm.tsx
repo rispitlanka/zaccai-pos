@@ -856,6 +856,7 @@ const ProductForm: React.FC = () => {
         </div>
 
         {/* Product Attributes */}
+        {/* Product Attributes section - commented out
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Product Attributes</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -938,6 +939,7 @@ const ProductForm: React.FC = () => {
             </div>
           </div>
         </div>
+        */}
 
         {/* Variations Toggle */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1340,12 +1342,12 @@ const ProductForm: React.FC = () => {
           </div>
 
           {/* Gallery Images */}
+          {/* Gallery Images and Size Chart - commented out
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Gallery Images <span className="text-xs text-gray-500">(optional, up to 8, 2MB each)</span>
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Existing gallery images */}
               {galleryImages.map((img, index) => (
                 <div key={index} className="relative aspect-square border-2 border-gray-200 rounded-lg overflow-hidden group">
                   <img
@@ -1369,7 +1371,6 @@ const ProductForm: React.FC = () => {
                 </div>
               ))}
               
-              {/* Add more gallery images button */}
               {galleryImages.length < 8 && (
                 <div
                   className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
@@ -1395,7 +1396,6 @@ const ProductForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Size Chart Image Upload */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Product Size Chart Image <span className="text-xs text-gray-500">(optional, max 2MB)</span></label>
           <div
@@ -1429,6 +1429,8 @@ const ProductForm: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+          */}
         </div>
 
         {/* Form Actions */}
