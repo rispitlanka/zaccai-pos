@@ -33,12 +33,17 @@ const Reports: React.FC = () => {
 
   // Daily Sales Report modal state
   const [showDailySalesModal, setShowDailySalesModal] = useState(false);
+  const [dailySalesDate, setDailySalesDate] = useState<string>(
+    () => new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  );
   const [dailySalesLoading, setDailySalesLoading] = useState(false);
   const [dailySalesError, setDailySalesError] = useState<string | null>(null);
   const [dailySales, setDailySales] = useState<{
     totalSales: number;
     totalOrders: number;
     averageOrderValue: number;
+    cashSales: number;
+    cardSales: number;
   } | null>(null);
 
   // Inventory Report modal state
@@ -125,18 +130,23 @@ const Reports: React.FC = () => {
     { category: "Other", amount: 5000 },
   ];
 
-  const fetchDailySalesReport = async () => {
+  const fetchDailySalesReport = async (date?: string) => {
+    const reportDate = date ?? new Date().toISOString().slice(0, 10);
     setShowDailySalesModal(true);
+    setDailySalesDate(reportDate);
     setDailySalesLoading(true);
     setDailySalesError(null);
     setDailySales(null);
     try {
-      const res = await api.get("/api/reports/sales");
+      const url = `/api/reports/sales/${reportDate}`;
+      const res = await api.get(url);
       if (res.data && res.data.success && res.data.summary) {
         setDailySales({
           totalSales: res.data.summary.totalRevenue,
           totalOrders: res.data.summary.totalOrders,
           averageOrderValue: res.data.summary.averageOrderValue,
+          cashSales: res.data.summary.cashSales ?? 0,
+          cardSales: res.data.summary.cardSales ?? 0,
         });
       } else {
         setDailySalesError("No data available");
@@ -648,7 +658,7 @@ const Reports: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-            onClick={fetchDailySalesReport}
+            onClick={() => fetchDailySalesReport()}
           >
             <div className="flex items-center mb-2">
               <Calendar className="w-5 h-5 text-blue-600 mr-2" />
@@ -727,6 +737,22 @@ const Reports: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Daily Sales Report
             </h2>
+            <div className="flex items-center gap-2 mb-4">
+              <label className="text-sm font-medium text-gray-700">Date:</label>
+              <input
+                type="date"
+                value={dailySalesDate}
+                onChange={(e) => setDailySalesDate(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={() => fetchDailySalesReport(dailySalesDate)}
+                disabled={dailySalesLoading}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                {dailySalesLoading ? "Loading..." : "Load"}
+              </button>
+            </div>
             {dailySalesLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -740,7 +766,7 @@ const Reports: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-700">Total Sales:</span>
                   <span className="font-bold text-green-700">
-                    LKR {dailySales.totalSales.toLocaleString()}
+                    LKR {dailySales.totalSales.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -750,8 +776,22 @@ const Reports: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-700">Average Order Value:</span>
                   <span className="font-bold">
-                    LKR {dailySales.averageOrderValue.toLocaleString()}
+                    LKR {dailySales.averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
+                </div>
+                <div className="border-t pt-4 mt-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Cash Sales:</span>
+                    <span className="font-bold text-emerald-600">
+                      LKR {dailySales.cashSales.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Card Sales:</span>
+                    <span className="font-bold text-blue-600">
+                      LKR {dailySales.cardSales.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (

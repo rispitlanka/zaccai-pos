@@ -1789,6 +1789,27 @@ paths:
         '200':
           description: Sales report retrieved successfully
 
+  /api/reports/sales/{date}:
+    get:
+      tags:
+        - Reports
+      summary: Get sales report for a specific date
+      description: Get sales analytics for a single day (YYYY-MM-DD)
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-03-10"
+          description: Date in YYYY-MM-DD format
+      responses:
+        '200':
+          description: Sales report retrieved successfully
+        '400':
+          description: Invalid date in route parameter
+
   /api/reports/inventory:
     get:
       tags:
